@@ -17,6 +17,13 @@ podTemplate(name: 'stx-build-centos-init', cloud: 'kubernetes',
     hostPathVolume(mountPath: '/opt/jenkins/centos/master', hostPath: '/opt/jenkins/centos/master')
   ]) {
   node("stx-build-centos-init"){
+      def BRANCH="master"
+      def ROOT_PATH="/opt/jenkins/centos"
+      def WORKDIR="${ROOT_PATH}/${BRANCH}"
+      def TOOLS_PATH="${WORKDIR}/tools"
+      def CENTOS_MIRROR="${WORKDIR}/mirror/cgcs-centos-repo"
+      def stx_MIRROR="${WORKDIR}/mirror/cgcs-stx-repo"
+      
     stage('git clone tools') {
       container('stx-build-centos-init') {
           sh """
