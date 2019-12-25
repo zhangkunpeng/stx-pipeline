@@ -1,0 +1,68 @@
+podTemplate(name: 'stx-build-centos-init', cloud: 'kubernetes',
+  namespace: 'devops', label: 'stx-build-centos-init',
+  serviceAccount: 'default', containers: [
+  containerTemplate(
+      name: 'stx-build-centos-init',
+      image: 'kunpeng4code/stx-builder:centos-base',
+      ttyEnabled: true,
+      privileged: false,
+      alwaysPullImage:true
+      )
+  ],
+  envVars: [
+      envVar(key: "BRANCH", value: "master"),
+      envVar(key: "ROOT_PATH", value: "/opt/jenkins/centos")
+  ],
+  volumes: [
+    hostPathVolume(mountPath: '/opt/jenkins/centos/master', hostPath: '/opt/jenkins/centos/master')
+  ]) {
+  node("stx-build-centos-init"){
+    stage('git clone tools') {
+      container('stx-build-centos-init') {
+          sh """
+            if [ -d "$TOOLS_PATH" ]; then
+                cd $TOOLS_PATH
+                git pull
+            else
+                git clone -v https://opendev.org/starlingx/tools.git $TOOLS_PATH --depth 1 --branch $BRANCH
+            fi
+          """
+      }
+    }
+    stage('download mirrors') {
+      container('stx-build-centos-init') {
+          sh """
+            if [ -d "$TOOLS_PATH/centos-mirror-tools/output" ];then
+                cd $TOOLS_PATH/centos-mirror-tools/
+                bash download_mirror.sh
+            else
+                cp -r $WORKDIR/output $TOOLS_PATH/centos-mirror-tools/output
+                cd $TOOLS_PATH/centos-mirror-tools/
+                bash download_mirror.sh
+            fi
+            cp -rf $TOOLS_PATH/centos-mirror-tools/output/* $WORKDIR/output/.
+          """
+      } 
+    }
+    stage('init repo'){
+        container('stx-build-centos-init') {
+          sh """
+            cd $WORKDIR
+            repo init -u https://opendev.org/starlingx/manifest -m default.xml -b $BRANCH
+            repo sync --force-sync
+          """
+        }
+    }
+    stage('generate centos repo') {
+      container('stx-build-centos-init') {
+          sh """
+            mkdir -p $CENTOS_MIRROR
+            cp -rf $WORKDIR/output/stx-r1/CentOS/pike/* $CENTOS_MIRROR
+            cp -f $WORKDIR/cgcs-root/build-tools/repo_files/comps.xml $CENTOS_MIRROR/Binary/comps.xml
+            cd $CENTOS_MIRROR/Binary/
+            createrepo -g comps.xml .
+          """
+      } 
+    }
+  }
+}
