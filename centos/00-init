@@ -17,13 +17,22 @@ podTemplate(
     namespace: 'devops',
     label: LABEL,
     serviceAccount: 'default',
+    containers: [
+        containerTemplate(
+            name: WORKCONTAINER,
+            image: 'kunpeng4code/stx-builder:centos',
+            ttyEnabled: true,
+            privileged: false,
+            alwaysPullImage:true
+        )
+    ],
     volumes: [
         hostPathVolume(mountPath: WORKDIR, hostPath: '/opt/jenkins')
     ]
 ) {
     node(LABEL){
         stage('create dirs') {
-            container("jnlp") {
+            container(WORKCONTAINER) {
                 sh """
                     mkdir -p ${COMPILE_PATH}
                     mkdir -p ${TOOLS_PATH}
