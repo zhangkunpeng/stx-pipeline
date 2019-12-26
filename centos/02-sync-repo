@@ -1,0 +1,43 @@
+def BRANCH="master"
+def LABEL="stx-build-centos-${BRANCH}-repo"
+def PODNAME=LABEL
+def WORKCONTAINER=LABEL
+def WORKDIR="/opt/jenkins/centos/master/source"
+podTemplate(
+    name: PODNAME,
+    cloud: 'kubernetes',
+    namespace: 'devops', 
+    label: LABEL,
+    serviceAccount: 'default',
+    containers: [
+        containerTemplate(
+            name: WORKCONTAINER,
+            image: 'kunpeng4code/stx-builder:centos',
+            ttyEnabled: true,
+            privileged: false,
+            alwaysPullImage:true
+        ),
+        containerTemplate(
+            name: 'stx-build-httpd',
+            image: 'httpd:2',
+            ttyEnabled: true,
+            privileged: false,
+            alwaysPullImage:false
+        )
+    ],
+    volumes: [
+        hostPathVolume(mountPath: WORKDIR, hostPath: '/opt/jenkins/centos/master/source')
+    ]
+) {
+    node(LABEL){
+        stage('sync repo'){
+            container(WORKCONTAINER) {
+                sh """
+                    cd $WORKDIR
+                    repo init -u https://opendev.org/starlingx/manifest -m default.xml -b $BRANCH
+                    repo sync --force-sync
+                """
+            }
+        }
+    }
+}

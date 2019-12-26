@@ -1,0 +1,38 @@
+
+def BRANCH="master"
+def LABEL="stx-build-centos-${BRANCH}-init"
+def PODNAME=LABEL
+def WORKCONTAINER=LABEL
+def WORKDIR="/opt/jenkins"
+def COMPILE_PATH='/opt/jenkins/centos/master/compile'
+def TOOLS_PATH="/opt/jenkins/centos/master/tools"
+def BACKUP_PATH="/opt/jenkins/centos/master/backup"
+def MIRROR_PATH="/opt/jenkins/centos/master/mirror"
+def DISTRO_PATH="/opt/jenkins/centos/master/distro"
+def FLOCK_PATH="/opt/jenkins/centos/master/flock"
+
+podTemplate(
+    name: PODNAME,
+    cloud: 'kubernetes',
+    namespace: 'devops',
+    label: LABEL,
+    serviceAccount: 'default',
+    volumes: [
+        hostPathVolume(mountPath: WORKDIR, hostPath: '/opt/jenkins')
+    ]
+) {
+    node(LABEL){
+        stage('create dirs') {
+            container("jnlp") {
+                sh """
+                    mkdir -p ${COMPILE_PATH}
+                    mkdir -p ${TOOLS_PATH}
+                    mkdir -p ${BACKUP_PATH}
+                    mkdir -p ${MIRROR_PATH}
+                    mkdir -p ${DISTRO_PATH}
+                    mkdir -p ${FLOCK_PATH}
+                """
+            } 
+        }
+    }
+}

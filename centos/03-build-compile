@@ -1,0 +1,50 @@
+
+def BRANCH="master"
+def LABEL="stx-build-centos-${BRANCH}-compile"
+def PODNAME=LABEL
+def WORKCONTAINER=LABEL
+def WORKDIR='/opt/jenkins/centos/master/compile'
+def TOOLS_PATH="/opt/jenkins/centos/master/tools"
+def BACKUP_PATH="/opt/jenkins/centos/master/backup"
+def MIRROR_PATH="/usr/local/apache2/htdocs"
+
+podTemplate(
+    name: PODNAME,
+    cloud: 'kubernetes',
+    namespace: 'devops',
+    label: LABEL,
+    serviceAccount: 'default',
+    containers: [
+        containerTemplate(
+            name: WORKCONTAINER,
+            image: 'kunpeng4code/stx-builder:centos',
+            ttyEnabled: true,
+            privileged: false,
+            alwaysPullImage:true
+        ),
+        containerTemplate(
+            name: 'stx-build-httpd',
+            image: 'httpd:2',
+            ttyEnabled: true,
+            privileged: false,
+            alwaysPullImage:false
+        )
+    ],
+    envVars: [
+        envVar(key: "BRANCH", value: "master")
+    ],
+    volumes: [
+        hostPathVolume(mountPath: WORKDIR, hostPath: '/opt/jenkins/centos/master/compile'),
+        hostPathVolume(mountPath: MIRROR_PATH, hostPath: '/opt/jenkins/centos/master/mirror')
+    ]
+) {
+    node(LABEL){
+        stage('check yum centos repo') {
+            container(WORKCONTAINER) {
+                sh """
+                    yum -c /etc/local.yum.conf makecache
+                """
+            } 
+        }
+    }
+}
